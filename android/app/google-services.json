@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "889222806614",
+    "project_id": "chat-9b649",
+    "storage_bucket": "chat-9b649.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:889222806614:android:ccaa8ac45b2b99b342cff7",
+        "android_client_info": {
+          "package_name": "com.furkan.chat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "889222806614-fi17g87fc7o22jk4l4k25l26a0vh6u3g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsOFPhwpwrvCCDKx1-cESj9wrzZS3GKyw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "889222806614-fi17g87fc7o22jk4l4k25l26a0vh6u3g.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
