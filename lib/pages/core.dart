@@ -22,6 +22,7 @@ class _CoreState extends State<Core> {
     var get =
         await FirebaseFirestore.instance.collection('users').doc(uid).get();
     myData = get.data()!;
+    setState(() {});
   }
 
   final globalKey = GlobalKey<ScaffoldState>();
@@ -50,4 +51,4 @@ class _CoreState extends State<Core> {
     );
   }
 }
-
+    
