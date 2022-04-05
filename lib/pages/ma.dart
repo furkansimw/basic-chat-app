@@ -48,8 +48,8 @@ class _MaState extends State<Ma> {
         'login': (context) => const Login(),
         'core': (context) => const Core(),
       },
-      //home: builder(),
-      home: Test(),
+      home: builder(),
+      //home: Test(),
     );
   }
 }

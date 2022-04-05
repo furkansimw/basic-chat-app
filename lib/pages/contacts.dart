@@ -70,9 +70,7 @@ class _ContactsState extends State<Contacts> {
               controller: controller,
               itemCount: contacts.length,
               itemBuilder: (c, i) => _ContactItem(contacts[i].data()['uid'])),
-        )
-        //_ContactItem(contacts[i])),
-        );
+        ));
   }
 }
 
