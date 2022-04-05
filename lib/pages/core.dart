@@ -1,3 +1,5 @@
+import 'package:chat/data/const.dart';
+import 'package:chat/pages/contacts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -30,12 +32,12 @@ class _CoreState extends State<Core> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const Drawer(),
-      appBar: AppBar(actions: [
+      appBar: AppBar(actions: const [
         Icon(
           Icons.search,
           size: 26,
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
       ]),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -43,12 +45,23 @@ class _CoreState extends State<Core> {
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            children: [],
-          ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          var user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            String uid = user.uid;
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => Contacts(uid: uid)));
+          } else {
+            toast('User not found\nTry again later');
+          }
+        },
+        backgroundColor: Colors.white,
+        elevation: 0,
+        child: const Icon(Icons.chat),
       ),
     );
   }
 }
-    
