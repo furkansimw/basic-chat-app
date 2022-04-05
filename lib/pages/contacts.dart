@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'chat.dart';
+
 class Contacts extends StatefulWidget {
   String uid;
   Contacts({required this.uid});
@@ -19,7 +21,7 @@ class _ContactsState extends State<Contacts> {
     controller.addListener(() {
       setState(() {
         if (controller.offset == controller.position.maxScrollExtent) {
-          limit++;
+          limit += 20;
           updateData();
         }
       });
@@ -90,7 +92,6 @@ class _ContactItem extends StatelessWidget {
             .then((value) => value.data()),
         builder: (context, AsyncSnapshot snapshot) {
           var data = snapshot.data;
-
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -126,7 +127,15 @@ class _ContactItem extends StatelessWidget {
                 ],
               ),
               const Spacer(),
-              const Icon(Icons.message),
+              GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => Chat(data: data)));
+                  },
+                  child: const Icon(Icons.message)),
               const SizedBox(width: 10),
             ],
           );

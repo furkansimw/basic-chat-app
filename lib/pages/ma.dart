@@ -48,8 +48,8 @@ class _MaState extends State<Ma> {
         'login': (context) => const Login(),
         'core': (context) => const Core(),
       },
-      home: builder(),
-      // home: Test(),
+      //home: builder(),
+      home: Test(),
     );
   }
 }
@@ -71,27 +71,31 @@ class _TestState extends State<Test> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const SizedBox(height: 300),
             ElevatedButton(
               child: const Text('ElevatedButton'),
               onPressed: () async {
-                var datas = await FirebaseFirestore.instance
-                    .collection('test')
-                    .limit(1)
-                    .get();
-                var get = await FirebaseFirestore.instance
-                    .collection('test')
-                    .startAfterDocument(datas.docs.last)
-                    .get();
-                get.docs.forEach((element) {
-                  print(element.id);
+                await FirebaseFirestore.instance
+                    .collection('chats')
+                    .doc('EdUeB0G0th54CizM0UYz')
+                    .collection('messages')
+                    .orderBy('date', descending: true)
+                    .snapshots()
+                    .listen((event) {
+                  datas = [];
+                  event.docs.forEach((element) {
+                    datas.add(element.data());
+                  });
+                  setState(() {});
                 });
               },
             ),
-            Text(datas.toString()),
-            ElevatedButton(
-              child: const Text('ElevatedButton'),
-              onPressed: () async {},
-            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: datas.length,
+                itemBuilder: (c, i) => Text(datas[i]['message'].toString()),
+              ),
+            )
           ],
         ),
       ),
