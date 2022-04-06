@@ -1,10 +1,11 @@
 import 'package:chat/data/const.dart';
 import 'package:chat/pages/chat.dart';
 import 'package:chat/pages/contacts.dart';
+import 'package:chat/pages/settingspage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Core extends StatefulWidget {
   const Core({Key? key}) : super(key: key);
@@ -25,11 +26,21 @@ class _CoreState extends State<Core> {
   void getMessagePersonData() {
     FirebaseFirestore.instance
         .collection('messages')
-        .orderBy('lastmsg', descending: true)
-        .limit(50)
+        .where('users', arrayContains: myUid)
+        .orderBy('lastdate', descending: true)
+        .limit(30)
         .snapshots()
         .listen((event) {
-      messagePerson = event.docs;
+      messagePerson.clear();
+
+      for (var element in event.docs) {
+        if (element.data()['hide'].contains(myUid)) {
+          messagePerson.remove(element);
+        } else {
+          messagePerson.add(element);
+        }
+      }
+
       setState(() {});
     });
   }
@@ -41,31 +52,82 @@ class _CoreState extends State<Core> {
         await FirebaseFirestore.instance.collection('users').doc(myUid).get();
     myData = get.data()!;
     setState(() {});
+    print(myData);
   }
 
   final globalKey = GlobalKey<ScaffoldState>();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const Drawer(),
-      appBar: AppBar(actions: const [
-        Icon(
-          Icons.search,
-          size: 26,
+      drawer: Drawer(
+          child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Hero(
+              tag: 'pp',
+              child: SizedBox(
+                width: 100,
+                height: 100,
+                child: ClipOval(
+                  child: myData['pp'] == null
+                      ? Image.asset('assets/none.png')
+                      : Image.network(myData['pp']),
+                ),
+              ),
+            ),
+            const SizedBox(height: 15),
+            Text(
+              myData['userName'].toString(),
+              style: const TextStyle(
+                fontSize: 20,
+              ),
+            ),
+            IconButton(
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => SettingsPage(myData))),
+                icon: const Icon(Icons.settings)),
+            const Divider(thickness: 2),
+            const Spacer(),
+            IconButton(
+                onPressed: () async {
+                  var sp = await SharedPreferences.getInstance();
+                  await FirebaseAuth.instance.signOut();
+                  await sp.setBool('isAuth', false);
+                  Navigator.pushNamedAndRemoveUntil(
+                      context, 'login', (route) => false);
+                },
+                icon: const Icon(Icons.exit_to_app_outlined)),
+            const SizedBox(height: 50),
+          ],
         ),
-        SizedBox(width: 10),
-      ]),
+      )),
+      appBar: AppBar(
+        actions: const [
+          Icon(
+            Icons.search,
+            size: 26,
+          ),
+          SizedBox(width: 10),
+        ],
+        title: const Text('Messages'),
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           await getData();
         },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: ListView.builder(
-            itemCount: messagePerson.length,
-            itemBuilder: (context, index) => _ContactItem(
-              findUser(messagePerson[index].data()['users']).toString(),
-              messagePerson[index].data(),
+        child: ListView.builder(
+          itemCount: messagePerson.length,
+          itemBuilder: (context, index) => Container(
+            color: Colors.black12,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: _ContactItem(
+                findUser(messagePerson[index].data()['users']).toString(),
+                messagePerson[index],
+              ),
             ),
           ),
         ),
@@ -113,67 +175,101 @@ class _ContactItem extends StatelessWidget {
             FirebaseFirestore.instance.collection('users').doc(personUid).get(),
         builder: (context, AsyncSnapshot snapshot) {
           var data = snapshot.data;
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          return GestureDetector(
-            onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => Chat(data: snapshot.data.data()))),
-            child: GestureDetector(
+          // if (snapshot.connectionState == ConnectionState.waiting) {
+          //   return const Center(child: CircularProgressIndicator());
+          // }
+          if (snapshot.hasData) {
+            return GestureDetector(
+              onLongPress: () => showModalBottomSheet(
+                context: context,
+                builder: (context) =>
+                    Column(mainAxisSize: MainAxisSize.min, children: [
+                  const SizedBox(height: 10),
+                  Text(
+                    'Deleting chat ${data['userName']}',
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () async {
+                      String myUid = FirebaseAuth.instance.currentUser!.uid;
+                      List def = docData.data()['hide'];
+                      def.add(myUid);
+                      Navigator.pop(context);
+                      await FirebaseFirestore.instance
+                          .collection('messages')
+                          .doc(docData.id)
+                          .update({
+                        'hide': def,
+                      });
+                    },
+                    child: const Text('Delete'),
+                  ),
+                  const SizedBox(height: 10),
+                ]),
+              ),
               onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (context) => Chat(data: snapshot.data.data()))),
-              child: Container(
-                color: Colors.transparent,
-                child: Row(
-                  children: [
-                    data['pp'] == null
-                        ? Hero(
-                            tag: 'pp',
-                            child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: ClipOval(
-                                    child: Image.asset('assets/none.png'))),
-                          )
-                        : Image.network(data['pp']),
-                    const SizedBox(width: 5),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(height: docData['lastmsg'] != null ? 10 : 0),
-                        Hero(
-                          tag: data['userName'],
-                          child: Text(
+              child: GestureDetector(
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            Chat(data: snapshot.data.data()))),
+                child: Container(
+                  color: Colors.transparent,
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: ClipOval(
+                          child: data['pp'] == null
+                              ? Image.asset('assets/none.png')
+                              : Image.network(data['pp']),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                              height:
+                                  docData.data()['lastmsg'] != null ? 10 : 0),
+                          Text(
                             data['userName'].toString(),
                             style: const TextStyle(fontSize: 18),
                           ),
-                        ),
-                        Visibility(
-                          visible: docData['lastmsg'] != null,
-                          child: Row(
-                            children: [
-                              const Icon(Icons.done, size: 20),
-                              Text(
-                                docData['lastmsg'].toString(),
-                                style: const TextStyle(
-                                    fontSize: 16,
-                                    fontStyle: FontStyle.italic,
-                                    color: Colors.white70),
-                              ),
-                            ],
+                          Visibility(
+                            visible: docData.data()['lastmsg'] != null,
+                            child: Row(
+                              children: [
+                                Visibility(
+                                    visible: docData.data()['lastsender'] !=
+                                        personUid,
+                                    child: const Icon(Icons.done, size: 20)),
+                                Text(
+                                  docData.data()['lastmsg'].toString(),
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.white70),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            );
+          }
+          return Row(
+            children: const [CircularProgressIndicator()],
           );
         },
       ),

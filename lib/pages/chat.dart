@@ -1,12 +1,13 @@
 import 'dart:async';
 
+import 'package:chat/data/const.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class Chat extends StatefulWidget {
   var data;
-  
+
   Chat({Key? key, required this.data}) : super(key: key);
 
   @override
@@ -16,11 +17,26 @@ class Chat extends StatefulWidget {
 class _ChatState extends State<Chat> {
   bool firstTime = false;
   var controller = PageController();
+  bool can = false;
+  String myUid = FirebaseAuth.instance.currentUser!.uid;
   List<QueryDocumentSnapshot<Map<String, dynamic>>> messages = [];
   @override
   void initState() {
     super.initState();
-    get();
+    isFriend();
+  }
+
+  void isFriend() async {
+    var _get = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(myUid)
+        .collection('contacts')
+        .doc(widget.data['uid'])
+        .get();
+    can = _get.exists;
+    if (can) {
+      get();
+    }
   }
 
   void scrollListener() {
@@ -80,8 +96,16 @@ class _ChatState extends State<Chat> {
     }
   }
 
-  String myUid = FirebaseAuth.instance.currentUser!.uid;
   TextEditingController messageController = TextEditingController();
+  void delete(item) {
+    FirebaseFirestore.instance
+        .collection('messages')
+        .doc(docId)
+        .collection('messages')
+        .doc(item.id)
+        .delete();
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,18 +115,15 @@ class _ChatState extends State<Chat> {
         title: SizedBox(
           height: 50,
           child: Row(children: [
-            Hero(
-              tag: 'pp ',
-              child: widget.data['pp'] == null
-                  ? Padding(
-                      padding: const EdgeInsets.all(3),
-                      child: ClipOval(
-                        child: AspectRatio(
-                            aspectRatio: 1,
-                            child: Image.asset('assets/none.png')),
-                      ),
-                    )
-                  : Image.network(widget.data['pp']),
+            Padding(
+              padding: const EdgeInsets.all(3),
+              child: ClipOval(
+                child: AspectRatio(
+                    aspectRatio: 1,
+                    child: widget.data['pp'] == null
+                        ? Image.asset('assets/none.png')
+                        : Image.network(widget.data['pp'])),
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -118,13 +139,25 @@ class _ChatState extends State<Chat> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              reverse: true,
-              controller: controller,
-              itemCount: messages.length,
-              itemBuilder: (context, index) =>
-                  _messageItem(data: messages[index]),
-            ),
+            child: can
+                ? ListView.builder(
+                    reverse: true,
+                    controller: controller,
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) => GestureDetector(
+                        onLongPress: () {
+                          if (messages[index].data()['sender'] == myUid) {
+                            deleteDialog(index, () {
+                              setState(() {});
+                            });
+                          }
+                        },
+                        child: _messageItem(data: messages[index])),
+                  )
+                : const Center(
+                    child: Text('you are not friends',
+                        style: TextStyle(fontSize: 22),
+                        textAlign: TextAlign.center)),
           ),
           SizedBox(
             height: 60,
@@ -146,10 +179,21 @@ class _ChatState extends State<Chat> {
                 ),
                 IconButton(
                   onPressed: () async {
+                    if (messageController.text.isEmpty) {
+                      return;
+                    }
+                    if (!can) {
+                      toast('you are not friends');
+                      null;
+                    }
+                    String message = messageController.text;
+
+                    messageController.clear();
+                    print('starting');
                     var data = {
                       'date': FieldValue.serverTimestamp(),
                       'sender': myUid,
-                      'message': messageController.text,
+                      'message': message,
                     };
                     print('---');
                     if (firstTime) {
@@ -176,9 +220,9 @@ class _ChatState extends State<Chat> {
                         .update({
                       'lastmsg': data['message'],
                       'lastsender': data['sender'],
-                      'lastdate': data['date']
+                      'lastdate': data['date'],
+                      'hide': [],
                     });
-                    messageController.clear();
                   },
                   icon: const Icon(Icons.send, size: 30),
                 ),
@@ -186,6 +230,108 @@ class _ChatState extends State<Chat> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  String converter(DateTime item) {
+    var month = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+    var now = DateTime.now();
+    if (item.year == now.year) {
+      if (item.month == now.month) {
+        if (item.day == now.day) {}
+      }
+    }
+
+    return '${item.year} ${item.day} ${month[item.month - 1]} ${item.hour}:${item.minute}';
+  }
+
+  deleteDialog(index, update) {
+    return showModalBottomSheet(
+      context: context,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Message :',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(messages[index].data()['message']),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Date : ',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(converter(DateTime.fromMillisecondsSinceEpoch(
+                    messages[index].data()['date'].seconds * 1000))),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+                onPressed: () async {
+                  await FirebaseFirestore.instance
+                      .collection('messages')
+                      .doc(docId)
+                      .collection('messages')
+                      .doc(messages[index].id)
+                      .delete();
+                  update();
+                  var get = await FirebaseFirestore.instance
+                      .collection('messages')
+                      .doc(docId)
+                      .collection('messages')
+                      .orderBy('date')
+                      .limit(1)
+                      .get();
+                  var data;
+                  try {
+                    data = get.docs[0].data();
+                  } catch (e) {
+                    data = {
+                      'lastmsg': null,
+                      'lastdate': null,
+                      'lastsender': null
+                    };
+                  }
+                  await FirebaseFirestore.instance
+                      .collection('messages')
+                      .doc(docId)
+                      .update({
+                    'lastmsg': data['message'],
+                    'lastdate': data['date'],
+                    'lastsender': data['sender']
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text('Delete')),
+            const SizedBox(height: 10),
+          ],
+        ),
       ),
     );
   }

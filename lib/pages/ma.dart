@@ -1,4 +1,5 @@
 import 'package:chat/pages/core.dart';
+import 'package:chat/pages/settingspage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -47,9 +48,10 @@ class _MaState extends State<Ma> {
       routes: {
         'login': (context) => const Login(),
         'core': (context) => const Core(),
+       
       },
       home: builder(),
-      //home: Test(),
+      //home: const Test(),
     );
   }
 }
@@ -73,29 +75,15 @@ class _TestState extends State<Test> {
           children: [
             const SizedBox(height: 300),
             ElevatedButton(
-              child: const Text('ElevatedButton'),
+              child: const Text('Test'),
               onPressed: () async {
-                await FirebaseFirestore.instance
-                    .collection('chats')
-                    .doc('EdUeB0G0th54CizM0UYz')
-                    .collection('messages')
-                    .orderBy('date', descending: true)
-                    .snapshots()
-                    .listen((event) {
-                  datas = [];
-                  event.docs.forEach((element) {
-                    datas.add(element.data());
-                  });
-                  setState(() {});
-                });
+                var get = FirebaseFirestore.instance
+                    .collection('test')
+                    .doc('uid')
+                    .get();
+                get.then((value) => print(value.id));
               },
             ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: datas.length,
-                itemBuilder: (c, i) => Text(datas[i]['message'].toString()),
-              ),
-            )
           ],
         ),
       ),
