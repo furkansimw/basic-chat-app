@@ -199,9 +199,9 @@ class _SeachItemState extends State<_SeachItem> {
                       status = Status.waiting;
                       await FirebaseFirestore.instance
                           .collection('users')
-                          .doc(widget.mydata['uid'])
-                          .collection('waiting')
                           .doc(widget.data['uid'])
+                          .collection('waiting')
+                          .doc(widget.mydata['uid'])
                           .set({});
                       Navigator.pop(context);
                     } else if (status == Status.friend) {
