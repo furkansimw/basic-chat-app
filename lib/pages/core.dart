@@ -74,8 +74,8 @@ class _CoreState extends State<Core> {
                   height: 100,
                   child: ClipOval(
                     child: getx.myData['pp'] == null
-                        ? Image.asset('assets/none.png')
-                        : Image.network(getx.myData['pp']),
+                        ? Image.asset('assets/none.png', fit: BoxFit.cover)
+                        : Image.network(getx.myData['pp'], fit: BoxFit.cover),
                   ),
                 ),
               ),
@@ -100,20 +100,41 @@ class _CoreState extends State<Core> {
                 ),
               ),
               IconButton(
-                  onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const SettingsPage())),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const SettingsPage()));
+                  },
                   icon: const Icon(Icons.settings)),
               const Divider(thickness: 2),
               const Spacer(),
               IconButton(
                   onPressed: () async {
-                    var sp = await SharedPreferences.getInstance();
-                    await FirebaseAuth.instance.signOut();
-                    await sp.setBool('isAuth', false);
-                    Navigator.pushNamedAndRemoveUntil(
-                        context, 'login', (route) => false);
+                    showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                              title: const Text('Are you sure app exit'),
+                              actions: [
+                                TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      Navigator.pop(context);
+                                    },
+                                    child: const Text('Cancel')),
+                                TextButton(
+                                    onPressed: () async {
+                                      var sp =
+                                          await SharedPreferences.getInstance();
+                                      await FirebaseAuth.instance.signOut();
+                                      await sp.setBool('isAuth', false);
+                                      Navigator.pushNamedAndRemoveUntil(
+                                          context, 'login', (route) => false);
+                                    },
+                                    child: const Text('Exit')),
+                              ],
+                            ));
                   },
                   icon: const Icon(Icons.exit_to_app_outlined)),
               const SizedBox(height: 50),
@@ -243,8 +264,9 @@ class _ContactItem extends StatelessWidget {
                         padding: const EdgeInsets.all(8.0),
                         child: ClipOval(
                           child: data['pp'] == null
-                              ? Image.asset('assets/none.png')
-                              : Image.network(data['pp']),
+                              ? Image.asset('assets/none.png',
+                                  fit: BoxFit.cover)
+                              : Image.network(data['pp'], fit: BoxFit.cover),
                         ),
                       ),
                       const SizedBox(width: 5),
