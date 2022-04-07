@@ -1,4 +1,5 @@
 import 'package:chat/pages/core.dart';
+import 'package:chat/pages/search.dart';
 import 'package:chat/pages/settingspage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -48,7 +49,7 @@ class _MaState extends State<Ma> {
       routes: {
         'login': (context) => const Login(),
         'core': (context) => const Core(),
-       
+        'search': (context) => const Search(),
       },
       home: builder(),
       //home: const Test(),

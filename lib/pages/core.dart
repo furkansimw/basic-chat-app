@@ -142,12 +142,18 @@ class _CoreState extends State<Core> {
           ),
         )),
         appBar: AppBar(
-          actions: const [
-            Icon(
-              Icons.search,
-              size: 26,
+          actions: [
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, 'search'),
+              child: const Hero(
+                tag: 'search',
+                child: Icon(
+                  Icons.search,
+                  size: 26,
+                ),
+              ),
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
           ],
           title: const Text('Messages'),
         ),
