@@ -129,7 +129,7 @@ class _ContactItem extends StatelessWidget {
                               children: [
                                 const Text('Bio : '),
                                 Text(
-                                  data['bio'] ?? 'nothing :(',
+                                  data['bio'] ?? '',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontStyle: FontStyle.values[1],

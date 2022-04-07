@@ -1,10 +1,12 @@
 import 'package:chat/data/const.dart';
+import 'package:chat/data/get.dart';
 import 'package:chat/pages/chat.dart';
 import 'package:chat/pages/contacts.dart';
 import 'package:chat/pages/settingspage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Core extends StatefulWidget {
@@ -15,6 +17,7 @@ class Core extends StatefulWidget {
 }
 
 class _CoreState extends State<Core> {
+  Getx getx = Get.put(Getx());
   List<QueryDocumentSnapshot<Map<String, dynamic>>> messagePerson = [];
   @override
   void initState() {
@@ -46,106 +49,120 @@ class _CoreState extends State<Core> {
   }
 
   String myUid = FirebaseAuth.instance.currentUser!.uid;
-  var myData = {};
+
   Future<void> getData() async {
     var get =
         await FirebaseFirestore.instance.collection('users').doc(myUid).get();
-    myData = get.data()!;
+    getx.myData.value = get.data()!;
     setState(() {});
-    print(myData);
   }
 
   final globalKey = GlobalKey<ScaffoldState>();
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: Drawer(
-          child: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Hero(
-              tag: 'pp',
-              child: SizedBox(
-                width: 100,
-                height: 100,
-                child: ClipOval(
-                  child: myData['pp'] == null
-                      ? Image.asset('assets/none.png')
-                      : Image.network(myData['pp']),
+    return Obx(
+      () => Scaffold(
+        drawer: Drawer(
+            child: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Hero(
+                tag: 'pp',
+                child: SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: ClipOval(
+                    child: getx.myData['pp'] == null
+                        ? Image.asset('assets/none.png')
+                        : Image.network(getx.myData['pp']),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                getx.myData['userName'].toString(),
+                style: const TextStyle(
+                  fontSize: 20,
+                ),
+              ),
+              Visibility(
+                visible: getx.myData['bio'] != null,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    getx.myData['bio'].toString(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ),
+              IconButton(
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const SettingsPage())),
+                  icon: const Icon(Icons.settings)),
+              const Divider(thickness: 2),
+              const Spacer(),
+              IconButton(
+                  onPressed: () async {
+                    var sp = await SharedPreferences.getInstance();
+                    await FirebaseAuth.instance.signOut();
+                    await sp.setBool('isAuth', false);
+                    Navigator.pushNamedAndRemoveUntil(
+                        context, 'login', (route) => false);
+                  },
+                  icon: const Icon(Icons.exit_to_app_outlined)),
+              const SizedBox(height: 50),
+            ],
+          ),
+        )),
+        appBar: AppBar(
+          actions: const [
+            Icon(
+              Icons.search,
+              size: 26,
+            ),
+            SizedBox(width: 10),
+          ],
+          title: const Text('Messages'),
+        ),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            await getData();
+          },
+          child: ListView.builder(
+            itemCount: messagePerson.length,
+            itemBuilder: (context, index) => Container(
+              color: Colors.black12,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: _ContactItem(
+                  findUser(messagePerson[index].data()['users']).toString(),
+                  messagePerson[index],
                 ),
               ),
             ),
-            const SizedBox(height: 15),
-            Text(
-              myData['userName'].toString(),
-              style: const TextStyle(
-                fontSize: 20,
-              ),
-            ),
-            IconButton(
-                onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => SettingsPage(myData))),
-                icon: const Icon(Icons.settings)),
-            const Divider(thickness: 2),
-            const Spacer(),
-            IconButton(
-                onPressed: () async {
-                  var sp = await SharedPreferences.getInstance();
-                  await FirebaseAuth.instance.signOut();
-                  await sp.setBool('isAuth', false);
-                  Navigator.pushNamedAndRemoveUntil(
-                      context, 'login', (route) => false);
-                },
-                icon: const Icon(Icons.exit_to_app_outlined)),
-            const SizedBox(height: 50),
-          ],
-        ),
-      )),
-      appBar: AppBar(
-        actions: const [
-          Icon(
-            Icons.search,
-            size: 26,
-          ),
-          SizedBox(width: 10),
-        ],
-        title: const Text('Messages'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await getData();
-        },
-        child: ListView.builder(
-          itemCount: messagePerson.length,
-          itemBuilder: (context, index) => Container(
-            color: Colors.black12,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: _ContactItem(
-                findUser(messagePerson[index].data()['users']).toString(),
-                messagePerson[index],
-              ),
-            ),
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          var user = FirebaseAuth.instance.currentUser;
-          if (user != null) {
-            String uid = user.uid;
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => Contacts(uid: uid)));
-          } else {
-            toast('User not found\nTry again later');
-          }
-        },
-        backgroundColor: Colors.white,
-        elevation: 0,
-        child: const Icon(Icons.chat),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            var user = FirebaseAuth.instance.currentUser;
+            if (user != null) {
+              String uid = user.uid;
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => Contacts(uid: uid)));
+            } else {
+              toast('User not found\nTry again later');
+            }
+          },
+          backgroundColor: Colors.white,
+          elevation: 0,
+          child: const Icon(Icons.chat),
+        ),
       ),
     );
   }

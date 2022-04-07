@@ -1,44 +1,188 @@
+import 'dart:io';
+
+import 'package:chat/data/const.dart';
+import 'package:chat/data/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 
 class SettingsPage extends StatefulWidget {
-  var myData;
-  SettingsPage(this.myData);
+  const SettingsPage({Key? key}) : super(key: key);
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  Getx getx = Get.find();
+  bool userNameEdit = false, bioEdit = false;
+  TextEditingController userName = TextEditingController(),
+      bioController = TextEditingController();
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 15),
-          Center(
-            child: Hero(
-              tag: 'pp',
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width / 3,
-                child: ClipOval(
-                  child: widget.myData['pp'] == null
-                      ? Image.asset('assets/none.png')
-                      : Image.network(widget.myData['pp']),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          userNameEdit = false;
+          bioEdit = false;
+        });
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Settings')),
+        body: Obx(
+          () => Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 15),
+              Center(
+                child: Hero(
+                  tag: 'pp',
+                  child: GestureDetector(
+                    onTap: () => showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                          TextButton(
+                              onPressed: () async =>
+                                  await updateImage(ImageSource.gallery),
+                              child: const Text('Gallery')),
+                          TextButton(
+                              onPressed: () async =>
+                                  await updateImage(ImageSource.camera),
+                              child: const Text('Camera')),
+                          Visibility(
+                            visible: getx.myData['pp'] != null,
+                            child: TextButton(
+                                onPressed: () async {
+                                  getx.myData['pp'] = null;
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(getx.myData['uid'])
+                                      .update({'pp': null});
+                                  Navigator.pop(context);
+                                },
+                                child: const Text('Remove Photo')),
+                          ),
+                        ]),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width / 3,
+                      child: ClipOval(
+                        child: getx.myData['pp'] == null
+                            ? Image.asset('assets/none.png')
+                            : Image.network(getx.myData['pp']),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 25),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  userNameEdit
+                      ? SizedBox(
+                          width: MediaQuery.of(context).size.width / 2,
+                          child: TextField(controller: userName))
+                      : Text(
+                          getx.myData['userName'].toString(),
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                  const SizedBox(width: 10),
+                  userNameEdit
+                      ? GestureDetector(
+                          onTap: () async {
+                            if (userName.text.length < 3) {
+                              toast('Username min 4 digit must');
+                              userNameEdit = false;
+                              setState(() {});
+                              return;
+                            }
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(getx.myData['uid'])
+                                .update({'userName': userName.text.toString()});
+                            userNameEdit = false;
+                            getx.myData['userName'] = userName.text.toString();
+                            setState(() {});
+                          },
+                          child: const Icon(Icons.done))
+                      : GestureDetector(
+                          onTap: () => setState(() {
+                                userName.text = getx.myData['userName'];
+                                userNameEdit = true;
+                              }),
+                          child: const Icon(Icons.edit)),
+                ],
+              ),
+              const SizedBox(height: 15),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  bioEdit
+                      ? SizedBox(
+                          width: MediaQuery.of(context).size.width / 2,
+                          child: TextField(controller: bioController))
+                      : Text(
+                          getx.myData['bio'] ?? 'enter bio',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                  const SizedBox(width: 10),
+                  bioEdit
+                      ? GestureDetector(
+                          onTap: () async {
+                            String? data = bioController.text;
+                            bioController.text == ''
+                                ? data = null
+                                : data = bioController.text;
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(getx.myData['uid'])
+                                .update({'bio': data});
+                            bioEdit = false;
+                            getx.myData['bio'] = data;
+                            setState(() {});
+                          },
+                          child: const Icon(Icons.done))
+                      : GestureDetector(
+                          onTap: () => setState(() {
+                                bioController.text = getx.myData['bio'] ?? '';
+                                bioEdit = true;
+                              }),
+                          child: const Icon(Icons.edit)),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 15),
-          Text(
-            widget.myData['userName'].toString(),
-            style: const TextStyle(
-              fontSize: 20,
-            ),
-          ),
-        ],
+        ),
       ),
     );
+  }
+
+  Future<void> updateImage(ImageSource source) async {
+    var picker = ImagePicker();
+    var picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      await FirebaseStorage.instance
+          .ref('pp')
+          .child(getx.myData['uid'] + '.png')
+          .putFile(File(picked.path));
+      String imageUrl = await FirebaseStorage.instance
+          .ref('pp')
+          .child(getx.myData['uid'] + 'png')
+          .getDownloadURL();
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(getx.myData['uid'])
+          .update({'pp': imageUrl});
+      Navigator.pop(context);
+    }
   }
 }
