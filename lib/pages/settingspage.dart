@@ -259,7 +259,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> updateImage(ImageSource source) async {
     var picker = ImagePicker();
-    var picked = await picker.pickImage(source: ImageSource.gallery);
+    var picked = await picker.pickImage(source: source);
     Navigator.pop(context);
     if (picked != null) {
       File file = File(picked.path);
