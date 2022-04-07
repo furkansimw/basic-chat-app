@@ -159,6 +159,12 @@ class _WaitingItem extends StatelessWidget {
                             .collection('contacts')
                             .doc(userId.id)
                             .set({});
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(userId.id)
+                            .collection('contacts')
+                            .doc(myUid)
+                            .set({});
                         update(userId);
                       },
                       child: const Icon(Icons.done, size: 30)),
