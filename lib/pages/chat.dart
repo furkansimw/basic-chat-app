@@ -17,7 +17,7 @@ class Chat extends StatefulWidget {
 class _ChatState extends State<Chat> {
   bool firstTime = false;
   var controller = PageController();
-  bool can = false;
+  bool? can;
   String myUid = FirebaseAuth.instance.currentUser!.uid;
   List<QueryDocumentSnapshot<Map<String, dynamic>>> messages = [];
   @override
@@ -34,7 +34,8 @@ class _ChatState extends State<Chat> {
         .doc(widget.data['uid'])
         .get();
     can = _get.exists;
-    if (can) {
+    setState(() {});
+    if (can!) {
       get();
     }
   }
@@ -139,25 +140,27 @@ class _ChatState extends State<Chat> {
       body: Column(
         children: [
           Expanded(
-            child: can
-                ? ListView.builder(
-                    reverse: true,
-                    controller: controller,
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) => GestureDetector(
-                        onLongPress: () {
-                          if (messages[index].data()['sender'] == myUid) {
-                            deleteDialog(index, () {
-                              setState(() {});
-                            });
-                          }
-                        },
-                        child: _messageItem(data: messages[index])),
-                  )
-                : const Center(
-                    child: Text('you are not friends',
-                        style: TextStyle(fontSize: 22),
-                        textAlign: TextAlign.center)),
+            child: can == null
+                ? const SizedBox()
+                : can!
+                    ? ListView.builder(
+                        reverse: true,
+                        controller: controller,
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) => GestureDetector(
+                            onLongPress: () {
+                              if (messages[index].data()['sender'] == myUid) {
+                                deleteDialog(index, () {
+                                  setState(() {});
+                                });
+                              }
+                            },
+                            child: _messageItem(data: messages[index])),
+                      )
+                    : const Center(
+                        child: Text('you are not friends',
+                            style: TextStyle(fontSize: 22),
+                            textAlign: TextAlign.center)),
           ),
           SizedBox(
             height: 60,
@@ -182,7 +185,7 @@ class _ChatState extends State<Chat> {
                     if (messageController.text.isEmpty) {
                       return;
                     }
-                    if (!can) {
+                    if (!can!) {
                       toast('you are not friends');
                       null;
                     }
@@ -301,6 +304,7 @@ class _ChatState extends State<Chat> {
                       .doc(messages[index].id)
                       .delete();
                   update();
+                  Navigator.pop(context);
                   var get = await FirebaseFirestore.instance
                       .collection('messages')
                       .doc(docId)
@@ -310,7 +314,7 @@ class _ChatState extends State<Chat> {
                       .get();
                   var data;
                   try {
-                    data = get.docs[0].data();
+                    data = get.docs.last.data();
                   } catch (e) {
                     data = {
                       'lastmsg': null,
@@ -326,7 +330,6 @@ class _ChatState extends State<Chat> {
                     'lastdate': data['date'],
                     'lastsender': data['sender']
                   });
-                  Navigator.pop(context);
                 },
                 child: const Text('Delete')),
             const SizedBox(height: 10),

@@ -1,3 +1,4 @@
+import 'package:chat/pages/waiting.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,7 @@ class _ContactsState extends State<Contacts> {
     getData();
   }
 
+  int waitingL = 0;
   Future<void> getData() async {
     var get = await FirebaseFirestore.instance
         .collection('users')
@@ -41,6 +43,13 @@ class _ContactsState extends State<Contacts> {
     for (var element in get.docs) {
       contacts.add(element);
     }
+    setState(() {});
+    var waitingLengthGet = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.uid)
+        .collection('waiting')
+        .get();
+    waitingL = waitingLengthGet.docs.length;
     setState(() {});
   }
 
@@ -63,15 +72,47 @@ class _ContactsState extends State<Contacts> {
     return Scaffold(
         appBar: AppBar(
           title: const Text('Contacts'),
+          actions: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  waitingL == 0 ? '' : waitingL.toString(),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w500, fontSize: 18),
+                ),
+              ],
+            ),
+            const SizedBox(width: 5),
+            GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WaitingPage(
+                        widget.uid,
+                      ),
+                    ),
+                  );
+                },
+                child: const Icon(Icons.loop)),
+            const SizedBox(width: 10),
+          ],
         ),
         body: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: ListView.builder(
-              padding: const EdgeInsets.only(top: 10),
-              controller: controller,
-              itemCount: contacts.length,
-              itemBuilder: (c, i) =>
-                  _ContactItem(contacts[i].id, () => getData())),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await getData();
+            },
+            child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(top: 10),
+                controller: controller,
+                itemCount: contacts.length,
+                itemBuilder: (c, i) =>
+                    _ContactItem(contacts[i].id, () => getData())),
+          ),
         ));
   }
 }
@@ -99,87 +140,90 @@ class _ContactItem extends StatelessWidget {
 
           if (snapshot.hasData) {
             return GestureDetector(
-              onTap: () => showModalBottomSheet(
-                  context: context,
-                  builder: (context) => Container(
-                        color: Colors.black12,
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              width: MediaQuery.of(context).size.width / 4,
-                              child: ClipOval(
-                                child: data['pp'] == null
-                                    ? Image.asset('assets/none.png')
-                                    : Image.network(data['pp']),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text('Username : '),
-                                Text(data['userName'].toString(),
-                                    style: const TextStyle(fontSize: 18)),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text('Bio : '),
-                                Text(
-                                  data['bio'] ?? '',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontStyle: FontStyle.values[1],
-                                  ),
+              onTap: () {
+                showModalBottomSheet(
+                    context: context,
+                    builder: (context) => Container(
+                          color: Colors.black12,
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: MediaQuery.of(context).size.width / 4,
+                                child: ClipOval(
+                                  child: data['pp'] == null
+                                      ? Image.asset('assets/none.png')
+                                      : Image.network(data['pp']),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            IconButton(
-                                tooltip: 'Remove Contact ${data['userName']}',
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: Text(
-                                          'Are you sure remove ${data['userName']}'),
-                                      actions: [
-                                        TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                            child: const Text('Cancel')),
-                                        TextButton(
-                                            onPressed: () async {
-                                              String myUid = FirebaseAuth
-                                                  .instance.currentUser!.uid;
-                                              await FirebaseFirestore.instance
-                                                  .collection('users')
-                                                  .doc(myUid)
-                                                  .collection('contacts')
-                                                  .doc(data['uid'])
-                                                  .delete();
-                                              await FirebaseFirestore.instance
-                                                  .collection('users')
-                                                  .doc(data['uid'])
-                                                  .collection('contacts')
-                                                  .doc(myUid)
-                                                  .delete();
-                                              update();
-                                              Navigator.pop(context);
-                                            },
-                                            child: const Text('Remove')),
-                                      ],
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text('Username : '),
+                                  Text(data['userName'].toString(),
+                                      style: const TextStyle(fontSize: 18)),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text('Bio : '),
+                                  Text(
+                                    data['bio'] ?? '',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontStyle: FontStyle.values[1],
                                     ),
-                                  );
-                                },
-                                icon: const Icon(Icons.remove_circle_outline)),
-                          ],
-                        ),
-                      )),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              IconButton(
+                                  tooltip: 'Remove Contact ${data['userName']}',
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text(
+                                            'Are you sure remove ${data['userName']}'),
+                                        actions: [
+                                          TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
+                                              child: const Text('Cancel')),
+                                          TextButton(
+                                              onPressed: () async {
+                                                String myUid = FirebaseAuth
+                                                    .instance.currentUser!.uid;
+                                                await FirebaseFirestore.instance
+                                                    .collection('users')
+                                                    .doc(myUid)
+                                                    .collection('contacts')
+                                                    .doc(data['uid'])
+                                                    .delete();
+                                                await FirebaseFirestore.instance
+                                                    .collection('users')
+                                                    .doc(data['uid'])
+                                                    .collection('contacts')
+                                                    .doc(myUid)
+                                                    .delete();
+                                                update();
+                                                Navigator.pop(context);
+                                              },
+                                              child: const Text('Remove')),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  icon:
+                                      const Icon(Icons.remove_circle_outline)),
+                            ],
+                          ),
+                        ));
+              },
               child: Container(
                 color: Colors.transparent,
                 child: Row(
